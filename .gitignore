@@ -2,5 +2,6 @@ src/bin/*
 *.pod5
 *.bam
 deep_env
-*/data/raw/*
-*/data/processed/*
+data/raw/*
+
+.download_complete
