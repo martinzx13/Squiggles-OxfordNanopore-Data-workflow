@@ -38,7 +38,7 @@ if [ ! -f "bin/dorado" ]; then
 fi
 
 DATA_URL="https://data.narodni-repozitar.cz/general/datasets/dj8ys-a4r49/files/"
-RAW_STRAIN_DATA_DIR="data/raw/strains.txt"
+RAW_STRAIN_DATA_DIR="data/data_index/data_ids.txt"
 TARGET_DIR="data/raw/"
 
 while IFS= read -r STRAIN_ID; do
@@ -50,7 +50,7 @@ done <"$RAW_STRAIN_DATA_DIR"
 
 # Download the data.
 
-# Go and look to the data/index/data_ids.txt file that contain the idnex
+# Go and look to the data/index/data_ids.txt file that contain the index
 
 # Start the downlad from the database.
 # In this case we will use a database that has the sequence of
