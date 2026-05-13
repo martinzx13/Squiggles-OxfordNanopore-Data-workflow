@@ -1,7 +1,10 @@
 src/bin/*
 *.pod5
-*.bam
+*.bam*
 deep_env
 data/raw/*
-
+data/processed/alignments/*
+data/processed/hd5f/*
+.temp*
 .download_complete
+bin
