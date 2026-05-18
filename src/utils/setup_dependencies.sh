@@ -24,19 +24,47 @@ mkdir -p bin data/raw data/processed configs docs notebooks scripts tests data/r
 
 # Installation of Dorado.
 
+DORADO_VERSION="0.5.0"
+
+# Detect OS and architecture
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+
+case "$OS" in
+  Linux)
+    case "$ARCH" in
+      x86_64) DORADO_PLATFORM="linux-x64" ;;
+      aarch64) DORADO_PLATFORM="linux-arm64" ;;
+      *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+    esac
+    ;;
+  Darwin)
+    case "$ARCH" in
+      x86_64) DORADO_PLATFORM="osx-x64" ;;
+      arm64)  DORADO_PLATFORM="osx-arm64" ;;
+      *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+    esac
+    ;;
+  *)
+    echo "Unsupported OS: $OS"; exit 1
+    ;;
+esac
+
+DORADO_TAR="dorado-${DORADO_VERSION}-${DORADO_PLATFORM}.tar.gz"
+DORADO_DIR="dorado-${DORADO_VERSION}-${DORADO_PLATFORM}"
+
 if [ ! -f "bin/dorado" ]; then
-  echo "Downloading Dorado"
-  # Version 0.5.0 you can change if needed.
-  curl -L "https://cdn.oxfordnanoportal.com/software/analysis/dorado-0.5.0-linux-x64.tar.gz" -o dorado.tar.gz
+  echo "Downloading Dorado ${DORADO_VERSION} for ${DORADO_PLATFORM}..."
+  curl -L "https://cdn.oxfordnanoportal.com/software/analysis/${DORADO_TAR}" -o dorado.tar.gz
   tar -xzf dorado.tar.gz
   echo "Moving Dorado"
 
   # move dorado to /bin
-  mv dorado-0.5.0-linux-x64/bin/dorado bin/
-  mv dorado-0.5.0-linux-x64/lib bin/
+  mv "${DORADO_DIR}/bin/dorado" bin/
+  mv "${DORADO_DIR}/lib" bin/
 
-  # Cleanning the tar and extracted folder.
-  rm -rf dorado-0.5.0-linux-x64 dorado.tar.gz
-  echo "Dorado Installed in bin/"
+  # Cleaning the tar and extracted folder.
+  rm -rf "${DORADO_DIR}" dorado.tar.gz
+  echo "Dorado ${DORADO_VERSION} installed in bin/"
 fi
 

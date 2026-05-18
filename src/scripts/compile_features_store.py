@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import pod5
 import pysam
+import argparse
 from pathlib import Path
 from collections import defaultdict
 
@@ -101,19 +102,33 @@ class FeatureStoreCompiler:
             [(g, 1) for g in self.pos_genes]
             + [(g, 0) for g in self.neg_genes]
         ):
+            ref_len = None
             try:
                 ref_len = samfile.get_reference_length(gene)
-                for aln in samfile.fetch(reference=gene):
-                    if aln.reference_length / ref_len >= self.coverage_threshold:
-                        reads.append({
-                            "read_id": aln.query_name,
-                            "label": label,
-                            "strain": strain_id,
-                            "gene": gene,
-                            "sam_read": aln,
-                        })
             except ValueError:
-                pass
+                print(f"[!] {strain_id}: Gene '{gene}' not in BAM header, skipping")
+                continue
+            if ref_len is None or ref_len == 0:
+                print(f"[!] {strain_id}: Gene '{gene}' has zero-length reference, skipping")
+                continue
+
+            gene_count = 0
+            for aln in samfile.fetch(reference=gene):
+                if not aln.is_mapped:
+                    continue
+                rlen = aln.reference_length
+                if rlen is None or rlen == 0:
+                    continue
+                if rlen / ref_len >= self.coverage_threshold:
+                    reads.append({
+                        "read_id": aln.query_name,
+                        "label": label,
+                        "strain": strain_id,
+                        "gene": gene,
+                        "sam_read": aln,
+                    })
+                    gene_count += 1
+            print(f"[*] {strain_id}: {gene_count} reads for {'pos' if label == 1 else 'neg'} target '{gene.split('|')[-1] if '|' in gene else gene}'")
 
         # Collect background (unmapped) reads up to the limit
         background_count = 0
@@ -187,6 +202,7 @@ class FeatureStoreCompiler:
             )
 
             idx = 0
+            success_by_strain = defaultdict(int)
             for strain_id, strain_reads in by_strain.items():
                 pod5_dir = self.raw_dir / strain_id
                 pod5_files = sorted(pod5_dir.glob("*.pod5"))
@@ -226,6 +242,7 @@ class FeatureStoreCompiler:
                                 M_strain[idx] = strain_id
                                 M_gene[idx] = meta["gene"]
                                 idx += 1
+                                success_by_strain[strain_id] += 1
 
                                 if idx % 100 == 0:
                                     print(f"    -> Projected {idx} / {N} tensors...")
@@ -252,8 +269,31 @@ class FeatureStoreCompiler:
 
         print(f"[+] Feature Store saved to {self.h5_path}")
         print(f"[+] Total tensors written: {actual}")
+        if actual < N:
+            print(f"[!] Failed / skipped {N - actual} of {N} reads ({((N - actual) / N) * 100:.1f}%)")
+
+        for sid in sorted(success_by_strain):
+            n_requested = len(by_strain[sid])
+            n_written = success_by_strain[sid]
+            if n_written < n_requested:
+                print(f"[*] {sid}: {n_written}/{n_requested} tensors written ({n_requested - n_written} failed)")
+            else:
+                print(f"[*] {sid}: {n_written} tensors written")
 
 
 if __name__ == "__main__":
-    compiler = FeatureStoreCompiler()
+    parser = argparse.ArgumentParser(description="Phase 3: Compile HDF5 feature store from BAM + POD5")
+    parser.add_argument("--window-size", type=int, default=30000, help="Signal window size in samples (default: 30000)")
+    parser.add_argument("--coverage", type=float, default=0.95, help="Min alignment coverage for positive reads (default: 0.95)")
+    parser.add_argument("--max-background", type=int, default=500, help="Max background reads per strain (default: 500)")
+    parser.add_argument("--index-file", type=str, default=None, help="Path to strain ID index file")
+    args = parser.parse_args()
+
+    compiler = FeatureStoreCompiler(
+        target_window=args.window_size,
+        coverage_threshold=args.coverage,
+        max_background_per_strain=args.max_background,
+    )
+    if args.index_file:
+        compiler.index_file = Path(args.index_file)
     compiler.compile()

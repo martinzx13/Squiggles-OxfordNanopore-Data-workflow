@@ -1,6 +1,7 @@
 import os
 import tarfile
 import shutil
+import argparse
 import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -196,5 +197,15 @@ class DatasetOrchestrator:
                     print(f"[-] Unhandled Thread Exception on {strain_id}: {e}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Phase 1: Download and verify POD5 data")
+    parser.add_argument("--max-workers", type=int, default=4, help="Number of parallel downloads (default: 4)")
+    parser.add_argument("--raw-dir", type=str, default=None, help="Output directory for raw POD5 files")
+    parser.add_argument("--index-file", type=str, default=None, help="Path to strain ID index file")
+    args = parser.parse_args()
+
     engine = DatasetOrchestrator()
-    engine.execute_pipeline(max_workers=4)
+    if args.raw_dir:
+        engine.raw_dir = Path(args.raw_dir)
+    if args.index_file:
+        engine.index_file = Path(args.index_file)
+    engine.execute_pipeline(max_workers=args.max_workers)

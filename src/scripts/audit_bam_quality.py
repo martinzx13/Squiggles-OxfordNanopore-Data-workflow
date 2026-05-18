@@ -1,5 +1,6 @@
 import pysam
 import json
+import argparse
 from pathlib import Path
 
 
@@ -85,15 +86,18 @@ class BAMAuditor:
         print("="*50 + "\n")
 
 if __name__ == "__main__":
-    # Contextual Pathing Setup
+    parser = argparse.ArgumentParser(description="Audit BAM quality for training readiness")
+    parser.add_argument("--coverage-threshold", type=float, default=0.90, help="Min coverage ratio for high-quality alignments (default: 0.90)")
+    parser.add_argument("--bam-dir", type=str, default=None, help="Directory with BAM files to audit")
+    args = parser.parse_args()
+
     project_root = Path(__file__).resolve().parent.parent.parent
-    alignments_dir = project_root / "data" / "processed" / "alignments"
+    alignments_dir = Path(args.bam_dir) if args.bam_dir else project_root / "data" / "processed" / "alignments"
 
     if not alignments_dir.exists():
         print(f"[-] Alignment manifold missing at {alignments_dir}")
     else:
-        # Scan all BAMs in the directory
-        for bam_file in alignments_dir.glob("*.bam"):
-            auditor = BAMAuditor(bam_path=bam_file, coverage_threshold=0.95)
+        for bam_file in sorted(alignments_dir.glob("*.bam")):
+            auditor = BAMAuditor(bam_path=bam_file, coverage_threshold=args.coverage_threshold)
             auditor.audit()
             auditor.print_report()

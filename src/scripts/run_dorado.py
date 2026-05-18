@@ -2,6 +2,7 @@ import subprocess
 import os
 import sys
 import re
+import argparse
 import threading
 from pathlib import Path
 
@@ -176,4 +177,17 @@ class DoradoRunner:
             self.execute_pipeline(strain_folder.name, strain_folder)
 
 if __name__ == "__main__":
-    DoradoRunner().run()
+    parser = argparse.ArgumentParser(description="Phase 2: Dorado basecalling + alignment")
+    parser.add_argument("--reference", type=str, default=None, help="Reference FASTA path")
+    parser.add_argument("--raw-dir", type=str, default=None, help="Directory with raw POD5 strain folders")
+    parser.add_argument("--processed-dir", type=str, default=None, help="Output directory for BAM files")
+    args = parser.parse_args()
+
+    runner = DoradoRunner()
+    if args.reference:
+        runner.reference_fasta = Path(args.reference)
+    if args.raw_dir:
+        runner.raw_dir = Path(args.raw_dir)
+    if args.processed_dir:
+        runner.processed_dir = Path(args.processed_dir)
+    runner.run()
